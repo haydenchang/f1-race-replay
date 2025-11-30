@@ -221,7 +221,7 @@ class F1ReplayWindow(arcade.Window):
                          20, self.height - 40, 
                          arcade.color.WHITE, 24, anchor_y="top").draw()
         
-        arcade.Text(f"Race Time: {time_str}", 
+        arcade.Text(f"Race Time: {time_str} (x{self.playback_speed})", 
                          20, self.height - 80, 
                          arcade.color.WHITE, 20, anchor_y="top").draw()
         
