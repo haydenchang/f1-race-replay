@@ -56,7 +56,8 @@ def main():
     total_laps = int(session.laps["LapNumber"].max())
     circuit_rotation = get_circuit_rotation(session)
 
-    title = f"{session.event["EventName"]} {YEAR} - Win Probability Replay"
+    event_name = session.event["EventName"]
+    title = f"{event_name} {YEAR} - Win Probability Replay"
     run_arcade_replay(
         frames = race_telemetry["frames"],
         track_statuses=race_telemetry["track_statuses"],
