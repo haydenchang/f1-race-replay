@@ -1,4 +1,4 @@
-# F1 Race Replay with ML Win Proabbilities 🏎️ 🏁
+# F1 Race Replay with ML Win Probabilities 🏎️ 🏁
 
 A real-time telemetry pipeline, feature engineering engine, and ML powered prediction system built on top of the original visualizer
 
