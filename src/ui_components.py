@@ -108,8 +108,28 @@ class LeaderboardComponent(BaseComponent):
                 text_color = arcade.color.BLACK
             else:
                 text_color = color
-            text = f"{current_pos}. {code}" if pos.get("rel_dist",0) != 1 else f"{current_pos}. {code}   OUT"
-            arcade.Text(text, left_x, top_y, text_color, 16, anchor_x="left", anchor_y="top").draw()
+            #text = f"{current_pos}. {code}" if pos.get("rel_dist",0) != 1 else f"{current_pos}. {code}   OUT"
+            #arcade.Text(text, left_x, top_y, text_color, 16, anchor_x="left", anchor_y="top").draw()
+
+            win_prob = pos.get("win_prob", None)
+            if win_prob is not None:
+                prob_str = f"{win_prob * 100:5.1f}%"
+                label = f"{current_pos}.{code} ({prob_str})"
+            else:
+                label = f"{current_pos}.{code}"
+
+            if pos.get("rel_dist", 0) == 1:
+                label += " OUT"
+
+            arcade.Text(
+                label,
+                left_x,
+                top_y,
+                text_color,
+                16,
+                anchor_x = "left",
+                anchor_y = "top",
+            ).draw()
 
              # Tyre Icons
             tyre_texture = self._tyre_textures.get(str(pos.get("tyre", "?")).upper())

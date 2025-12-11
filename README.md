@@ -1,10 +1,38 @@
-# F1 Race Replay 🏎️ 🏁
+# F1 Race Replay with ML Win Proabbilities 🏎️ 🏁
 
-A Python application for visualizing Formula 1 race telemetry and replaying race events with interactive controls and a graphical interface.
+A real-time telemetry pipeline, feature engineering engine, and ML powered prediction system built on top of the original visualizer
+
+This project is an enhanced fork of the origianl F1 Race Replay by Tom Shaw. It introduces data engineering piplines, multi-season training
 
 ![Race Replay Preview](./resources/preview.png)
 
-## Features
+## New Additions in This Fork
+
+### Machine Learning
+
+- **Win Probability Model (XGBoost):** trained on multiple seasons of F1 races
+- Automatically computes probability of each driver finishing P1 considering current place and tyre
+
+### Feature Engineering
+
+- Rolling lap time averages
+- Gap to leader
+- Tire life
+- Stint degradation
+- etc
+
+### Data Engineering
+
+- Multi-season ingestion via FastF1 API
+- Cleans, merges, normalizes telemtry + lap data
+- Deterministic dataset creation for ML
+
+## Real Time Race Replay with Win Probabilities
+
+- Model predicts live win probability for each frame
+- Displayed directly in leaderboard UI next to driver names
+
+## Original Features
 
 - **Race Replay Visualization:** Watch the race unfold with real-time driver positions on a rendered track.
 - **Leaderboard:** See live driver positions and current tyre compounds.
@@ -30,7 +58,8 @@ Recently added support for Qualifying session replays with telemetry visualizati
 - Python 3.8+
 - [FastF1](https://github.com/theOehrly/Fast-F1)
 - [Arcade](https://api.arcade.academy/en/latest/)
-- numpy
+- numpy / pandas
+- XGBoost
 
 Install dependencies:
 ```bash
@@ -46,56 +75,46 @@ Run the main script and specify the year and round:
 python main.py --year 2025 --round 12
 ```
 
-To run a Sprint session (if the event has one), add `--sprint`:
-```bash
-python main.py --year 2025 --round 12 --sprint
-```
-
 The application will load a pre-computed telemetry dataset if you have run it before for the same event. To force re-computation of telemetry data, use the `--refresh-data` flag:
 ```bash
 python main.py --year 2025 --round 12 --refresh-data
-```
-
-### Qualifying Session Replay
-
-To run a Qualifying session replay, use the `--qualifying` flag:
-```bash
-python main.py --year 2025 --round 12 --qualifying
-```
-
-To run a Sprint Qualifying session (if the event has one), add `--sprint`:
-```bash
-python main.py --year 2025 --round 12 --qualifying --sprint
 ```
 
 ## File Structure
 
 ```
 f1-race-replay/
-├── main.py                    # Entry point, handles session loading and starts the replay
-├── requirements.txt           # Python dependencies
-├── README.md                  # Project documentation
-├── roadmap.md                 # Planned features and project vision
+├── main.py                     # Entry point, handles session loading and starts the replay
+├── requirements.txt            # Python dependencies
+├── README.md                   # Project documentation
+├── roadmap.md                  # Planned features and project vision
+├── ml/
+│   ├── train_model.py          # Multi-season training pipeline (XGBoost)
+│   ├── inference.py            # Real-time win probability inference
+│   └── feature_engineering.py  # Feature builder for training & replay
 ├── resources/
-│   └── preview.png           # Race replay preview image
+│   └── preview.png             # Race replay preview image
 ├── src/
-│   ├── f1_data.py            # Telemetry loading, processing, and frame generation
-│   ├── arcade_replay.py      # Visualization and UI logic
-│   └── ui_components.py      # UI components like buttons and leaderboard
+│   ├── f1_data.py              # Telemetry loading, processing, and frame generation
+│   ├── arcade_replay.py        # Visualization and UI logic
+│   └── ui_components.py        # UI components like buttons and leaderboard
 │   ├── interfaces/
-│   │   └── qualifying.py     # Qualifying session interface and telemetry visualization
-│   │   └── race_replay.py    # Race replay interface and telemetry visualization
+│   │   └── qualifying.py       # Qualifying session interface and telemetry visualization
+│   │   └── race_replay.py      # Race replay interface and telemetry visualization
 │   └── lib/
-│       └── tyres.py          # Type definitions for telemetry data structures
-│       └── time.py           # Time formatting utilities
-└── .fastf1-cache/            # FastF1 cache folder (created automatically upon first run)
-└── computed_data/            # Computed telemetry data (created automatically upon first run)
+│       └── tyres.py            # Type definitions for telemetry data structures
+│       └── time.py             # Time formatting utilities
+├── artifacts/
+│   └── xgb_win_model.json      # Saved model
+├── .fastf1-cache/              # FastF1 cache folder (created automatically upon first run)
+└── computed_data/              # Computed telemetry data (created automatically upon first run)
 ```
 
 ## Customization
 
-- Change track width, colors, and UI layout in `src/arcade_replay.py`.
-- Adjust telemetry processing in `src/f1_data.py`.
+- Modify feature engineering in ml/feature_engineering.py
+- Adjust model hyperparameters in ml/train_model.py
+- Customize UI in src/arcade_replay.py
 
 ## Contributing
 
@@ -121,5 +140,3 @@ This project is licensed under the MIT License.
 No copyright infringement intended. Formula 1 and related trademarks are the property of their respective owners. All data used is sourced from publicly available APIs and is used for educational and non-commercial purposes only.
 
 ---
-
-Built with ❤️ by [Tom Shaw](https://tomshaw.dev)

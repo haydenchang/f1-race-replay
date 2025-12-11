@@ -1,87 +1,74 @@
-from src.f1_data import get_race_telemetry, enable_cache, get_circuit_rotation, load_session, get_quali_telemetry
+import argparse
+from pathlib import Path
+
+import fastf1
+from xgboost import XGBClassifier
+
+from src.f1_data import load_session, get_race_telemetry, get_driver_colors, get_circuit_rotation
 from src.arcade_replay import run_arcade_replay
+from ml.inference import compute_win_probabilities_for_session
 
-from src.interfaces.qualifying import run_qualifying_replay
-import sys
+PROJECT_DIR = Path(__file__).resolve().parent
+ARTIFACTS_DIR = PROJECT_DIR / 'artifacts'
+MODEL_PATH = ARTIFACTS_DIR / 'xgb_win_model.json'
 
-def main(year=None, round_number=None, playback_speed=1, session_type='R'):
-  print(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
-  session = load_session(year, round_number, session_type)
 
-  print(f"Loaded session: {session.event['EventName']} - {session.event['RoundNumber']} - {session_type}")
+def load_trained_model(model_path: Path) -> XGBClassifier:
+    model = XGBClassifier()
+    if not hasattr(model, "_estimator_type"):
+        model._estimator_type = "classifier"
+    model.load_model(str(model_path))
+    return model
 
-  # Enable cache for fastf1
-  enable_cache()
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run F1 Race Replay with Win Probabilities")
+    parser.add_argument("--year", "-y", type = int, required = True, help = "Race year")
+    parser.add_argument("--round", "-r", type = int, required = True, help = "Round number")
+    return parser.parse_args()
 
-  if session_type == 'Q' or session_type == 'SQ':
+def main():
+    args = parse_args()
+    YEAR = args.year
+    ROUND = args.round
 
-    # Get the drivers who participated and their lap times
+    cache_dir = PROJECT_DIR / 'fastf1_cache'
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    fastf1.Cache.enable_cache(str(cache_dir))
 
-    qualifying_session_data = get_quali_telemetry(session, session_type=session_type)
+    print(f"Loading race year = {YEAR}, round = {ROUND} ...")
+    fastf1.Cache.enable_cache(str(PROJECT_DIR / "fastf1_cache"))
 
-    # Run the arcade screen showing qualifying results
+    session = load_session(YEAR, ROUND, session_type ="R")
 
-    title = f"{session.event['EventName']} - {'Sprint Qualifying' if session_type == 'SQ' else 'Qualifying Results'}"
-    
-    run_qualifying_replay(
-      session=session,
-      data=qualifying_session_data,
-      title=title,
-    )
+    model = load_trained_model(MODEL_PATH)
 
-  else:
-
-    # Get the drivers who participated in the race
-
-    race_telemetry = get_race_telemetry(session, session_type=session_type)
-
-    # Get example lap for track layout
-
+    print("Computing win probabilities...")
+    win_prob_lookup = compute_win_probabilities_for_session(session, model)
+    print(f"win_prob: {len(win_prob_lookup)}")
+    for i, (k, v) in enumerate(win_prob_lookup.items()):
+        if i >= 5:
+            break
+        print(" sample:", k, "->", v)
+    race_telemetry = get_race_telemetry(session, session_type ="R")
     example_lap = session.laps.pick_fastest().get_telemetry()
-
     drivers = session.drivers
-
-    # Get circuit rotation
-
+    driver_colors = get_driver_colors(session)
+    total_laps = int(session.laps["LapNumber"].max())
     circuit_rotation = get_circuit_rotation(session)
 
-    # Run the arcade replay
-
-    # Check for optional chart flag
-    chart = "--chart" in sys.argv
-
+    title = f"{session.event["EventName"]} {YEAR} - Win Probability Replay"
     run_arcade_replay(
-        frames=race_telemetry['frames'],
-        track_statuses=race_telemetry['track_statuses'],
+        frames = race_telemetry["frames"],
+        track_statuses=race_telemetry["track_statuses"],
         example_lap=example_lap,
         drivers=drivers,
+        title=title,
         playback_speed=1.0,
-        driver_colors=race_telemetry['driver_colors'],
-        title=f"{session.event['EventName']} - {'Sprint' if session_type == 'S' else 'Race'}",
-        total_laps=race_telemetry['total_laps'],
+        driver_colors=driver_colors,
         circuit_rotation=circuit_rotation,
-        chart=chart,
+        total_laps=total_laps,
+        win_prob_lookup=win_prob_lookup,
     )
 
 if __name__ == "__main__":
-
-  # Get the year and round number from user input
-
-  if "--year" in sys.argv:
-    year_index = sys.argv.index("--year") + 1
-    year = int(sys.argv[year_index])
-  else:
-    year = 2025  # Default year
-
-  if "--round" in sys.argv:
-    round_index = sys.argv.index("--round") + 1
-    round_number = int(sys.argv[round_index])
-  else:
-    round_number = 12  # Default round number
-
-  playback_speed = 1
-
-# Session type selection
-  session_type = 'SQ' if "--sprint-qualifying" in sys.argv else ('S' if "--sprint" in sys.argv else ('Q' if "--qualifying" in sys.argv else 'R'))
-  
-  main(year, round_number, playback_speed, session_type=session_type)
+    main()

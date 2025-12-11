@@ -13,7 +13,7 @@ SCREEN_TITLE = "F1 Replay"
 class F1RaceReplayWindow(arcade.Window):
     def __init__(self, frames, track_statuses, example_lap, drivers, title,
                  playback_speed=1.0, driver_colors=None, circuit_rotation=0.0,
-                 left_ui_margin=340, right_ui_margin=260, total_laps=None):
+                 left_ui_margin=340, right_ui_margin=260, total_laps=None, win_prob_lookup=None,):
         # Set resizable to True so the user can adjust mid-sim
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, title, resizable=True)
 
@@ -26,6 +26,7 @@ class F1RaceReplayWindow(arcade.Window):
         self.frame_index = 0.0  # use float for fractional-frame accumulation
         self.paused = False
         self.total_laps = total_laps
+        self.win_prob_lookup = win_prob_lookup or {}
         self.has_weather = any("weather" in frame for frame in frames) if frames else False
 
         # Rotation (degrees) to apply to the whole circuit around its centre
@@ -352,7 +353,24 @@ class F1RaceReplayWindow(arcade.Window):
         for code, pos in frame["drivers"].items():
             color = self.driver_colors.get(code, arcade.color.WHITE)
             progress_m = driver_progress.get(code, float(pos.get("dist", 0.0)))
-            driver_list.append((code, color, pos, progress_m))
+
+            pos_with_prob = dict(pos)
+            win_prob = None
+            if self.win_prob_lookup:
+                lap_raw = pos.get("lap", 1)
+                try:
+                    lap_int = int(lap_raw)
+                except Exception:
+                    try:
+                        lap_int = int(float(lap_raw))
+                    except Exception:
+                        lap_int = 1
+
+                key = (str(code), int(lap_int))
+                win_prob = self.win_prob_lookup.get(key)
+            if win_prob is not None:
+                pos_with_prob["win_prob"] = float(win_prob)
+            driver_list.append((code, color, pos_with_prob, progress_m))
         driver_list.sort(key=lambda x: x[3], reverse=True)
         self.leaderboard_comp.set_entries(driver_list)
         self.leaderboard_comp.draw(self)
